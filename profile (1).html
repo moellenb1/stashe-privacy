@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stashe</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #0a0a0a; color: #f0f0f0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; min-height: 100vh; }
+  .container { max-width: 480px; margin: 0 auto; padding: 0 0 60px; }
+
+  /* HEADER */
+  .site-header { padding: 20px 20px 0; display: flex; align-items: center; justify-content: space-between; }
+  .site-logo { font-size: 24px; font-weight: 600; letter-spacing: -1px; color: #fff; text-decoration: none; }
+  .site-logo span { color: #1D9E75; }
+  .download-btn { background: #1D9E75; color: #fff; font-size: 13px; font-weight: 500; padding: 8px 16px; border-radius: 20px; text-decoration: none; }
+
+  /* PROFILE HEADER */
+  .profile-header { display: flex; flex-direction: column; align-items: center; padding: 28px 20px 20px; text-align: center; }
+  .avatar { width: 72px; height: 72px; border-radius: 50%; background: #1c1c1c; border: 2px solid #222; display: flex; align-items: center; justify-content: center; font-size: 28px; color: #666; margin-bottom: 12px; overflow: hidden; }
+  .profile-name { font-size: 20px; font-weight: 600; margin-bottom: 4px; }
+  .profile-count { font-size: 14px; color: #666; margin-bottom: 14px; }
+  .taste-box { background: #111; border-left: 2px solid #1D9E75; border-radius: 0 8px 8px 0; padding: 10px 14px; margin: 0 20px 20px; }
+  .taste-text { font-style: italic; font-size: 14px; color: #888; line-height: 1.6; }
+
+  /* GRID */
+  .poster-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 3px; padding: 0 3px; margin-bottom: 24px; }
+  .grid-item { aspect-ratio: 2/3; border-radius: 4px; background: #1c1c1c; overflow: hidden; }
+  .grid-item img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+  /* CTA */
+  .cta-section { padding: 0 20px; margin-bottom: 32px; }
+  .cta-box { background: #1D9E75; border-radius: 14px; padding: 20px; text-align: center; }
+  .cta-title { font-size: 18px; font-weight: 600; color: #fff; margin-bottom: 6px; }
+  .cta-sub { font-size: 13px; color: rgba(255,255,255,0.7); margin-bottom: 16px; line-height: 1.5; }
+  .app-store-btn { display: inline-block; background: #000; color: #fff; font-size: 14px; font-weight: 500; padding: 12px 24px; border-radius: 10px; text-decoration: none; border: 1px solid #333; }
+
+  /* LOADING / ERROR */
+  .loading { display: flex; align-items: center; justify-content: center; min-height: 60vh; }
+  .spinner { width: 28px; height: 28px; border: 2px solid #1c1c1c; border-top-color: #1D9E75; border-radius: 50%; animation: spin 0.7s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .error-state { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 60vh; padding: 40px 20px; text-align: center; }
+  .error-title { font-size: 18px; font-weight: 500; margin-bottom: 8px; }
+  .error-sub { font-size: 14px; color: #666; line-height: 1.6; margin-bottom: 24px; }
+
+  /* FOOTER */
+  .footer { padding: 20px; text-align: center; border-top: 0.5px solid #1c1c1c; }
+  .footer a { color: #1D9E75; font-size: 13px; text-decoration: none; }
+  .footer p { color: #333; font-size: 12px; margin-top: 8px; }
+
+  /* META TAGS for social sharing */
+</style>
+</head>
+<body>
+
+<div class="container">
+  <div class="site-header">
+    <a class="site-logo" href="https://apps.apple.com/app/stashe/id6761671518">stashe</a>
+    <a class="download-btn" href="https://apps.apple.com/app/stashe/id6761671518">Get the app</a>
+  </div>
+
+  <div id="content">
+    <div class="loading"><div class="spinner"></div></div>
+  </div>
+
+  <div class="footer">
+    <a href="https://apps.apple.com/app/stashe/id6761671518">Download Stashe — Free on the App Store</a>
+    <p>A product of Emerald Services LLC</p>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://ihiscksjxflpwzsrrgok.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImloaXNja3NqeGZscHd6c3JyZ29rIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUzMjgwOTQsImV4cCI6MjA5MDkwNDA5NH0.GlwWipyzMw43lLkSsTOVDq6Q5hT_DMb6v-jEgGx52Kc';
+const TMDB_IMG = 'https://image.tmdb.org/t/p/w342';
+const APP_STORE = 'https://apps.apple.com/app/stashe/id6761671518';
+
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+function getUsername() {
+  const params = new URLSearchParams(window.location.search);
+  const u = params.get('u');
+  if (u) return u;
+  const path = window.location.pathname;
+  const parts = path.split('/').filter(Boolean);
+  return parts[parts.length - 1] || null;
+}
+
+function generateTaste(films) {
+  const genreCounts = {};
+  const decadeCounts = {};
+  films.forEach(f => {
+    if (f.genres) f.genres.split(',').forEach(g => {
+      const k = g.trim();
+      if (k) genreCounts[k] = (genreCounts[k] || 0) + 1;
+    });
+    if (f.year) {
+      const d = Math.floor(parseInt(f.year) / 10) * 10;
+      decadeCounts[d] = (decadeCounts[d] || 0) + 1;
+    }
+  });
+  const topGenres = Object.entries(genreCounts).sort((a,b) => b[1]-a[1]).slice(0,2).map(e => e[0].toLowerCase());
+  const topDecades = Object.entries(decadeCounts).sort((a,b) => b[1]-a[1]).slice(0,2).map(e => `${e[0]}s`);
+  if (!topGenres.length) return null;
+  return `Loves ${topDecades.length ? topDecades.join('–') + ' ' : ''}${topGenres.join(' and ')}`;
+}
+
+async function loadProfile() {
+  const username = getUsername();
+  if (!username || username === 'profile' || username === '') {
+    showError('No profile found', 'This link doesn\'t point to a valid stashe profile.');
+    return;
+  }
+
+  const { data: profile, error: profileError } = await sb
+    .from('profiles')
+    .select('id, username')
+    .eq('username', username)
+    .single();
+
+  if (profileError || !profile) {
+    showError('Profile not found', `We couldn't find a stashe for "${username}". The user may have deleted their account.`);
+    return;
+  }
+
+  const { data: films } = await sb
+    .from('stashe')
+    .select('*')
+    .eq('user_id', profile.id)
+    .order('added_at', { ascending: false });
+
+  const stashe = films || [];
+  const taste = stashe.length >= 3 ? generateTaste(stashe) : null;
+  const initials = username.charAt(0).toUpperCase();
+  const count = stashe.length;
+
+  document.title = `${username}'s stashe — ${count} film${count !== 1 ? 's' : ''}`;
+
+  let html = `
+    <div class="profile-header">
+      <div class="avatar">${initials}</div>
+      <p class="profile-name">${username}'s stashe</p>
+      <p class="profile-count">${count} film${count !== 1 ? 's' : ''}</p>
+    </div>
+  `;
+
+  if (taste) {
+    html += `<div class="taste-box"><p class="taste-text">"${taste}"</p></div>`;
+  }
+
+  if (stashe.length > 0) {
+    html += `<div class="poster-grid">`;
+    html += stashe.map(f => `
+      <div class="grid-item">
+        ${f.poster_path
+          ? `<img src="${TMDB_IMG}${f.poster_path}" alt="${f.title}" loading="lazy">`
+          : `<div style="width:100%;height:100%;background:#1c1c1c;"></div>`
+        }
+      </div>
+    `).join('');
+    html += `</div>`;
+  }
+
+  html += `
+    <div class="cta-section">
+      <div class="cta-box">
+        <p class="cta-title">Build your own stashe</p>
+        <p class="cta-sub">Your personal film collection — free, always. Build as large as you like and share your taste with one tap.</p>
+        <a class="app-store-btn" href="${APP_STORE}">Download free on the App Store</a>
+      </div>
+    </div>
+  `;
+
+  document.getElementById('content').innerHTML = html;
+}
+
+function showError(title, sub) {
+  document.getElementById('content').innerHTML = `
+    <div class="error-state">
+      <p class="error-title">${title}</p>
+      <p class="error-sub">${sub}</p>
+      <a class="download-btn" href="${APP_STORE}" style="padding:12px 24px;border-radius:10px;font-size:15px;">Get Stashe — Free</a>
+    </div>
+  `;
+}
+
+loadProfile();
+</script>
+</body>
+</html>
